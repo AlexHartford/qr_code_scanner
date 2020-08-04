@@ -6,18 +6,23 @@ import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 void main() => runApp(MaterialApp(home: QRViewExample()));
 
+// ignore: must_be_immutable
 class QRViewExample extends HookWidget {
-  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  QRViewExample({Key key})
+      : this.qrKey = GlobalKey(debugLabel: 'QR'),
+        super(key: key);
+
+  final GlobalKey qrKey;
 
   QRViewController controller;
 
   @override
   Widget build(BuildContext context) {
     final permissionController = useStreamController<bool>();
+    final isPermissionGranted = useState(true);
+
     final qrText = useState('');
     final flash = useState(false);
-    final backCamera = useState(true);
-    final isPermissionGranted = useState(true);
 
     useEffect(() {
       permissionController.stream
@@ -29,98 +34,86 @@ class QRViewExample extends HookWidget {
       return controller?.dispose;
     }, const []);
 
+    useEffect(() {
+      qrText.addListener(() => print(qrText.value));
+      return qrText.dispose;
+    }, [qrText.value]);
+
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: <Widget>[
-          Expanded(
-            child: isPermissionGranted.value
-                ? qrViewWidget(qrText, permissionController)
-                : permissionDialogWidget(),
-            flex: 4,
-          ),
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          isPermissionGranted.value
+              ? qrViewWidget(qrText, permissionController)
+              : permissionDialogWidget(),
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 64),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Text("barcode value: ${qrText.value}"),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Container(
-                        margin: EdgeInsets.all(8.0),
-                        child: RaisedButton(
-                          onPressed: () {
-                            if (controller != null) {
-                              controller.toggleFlash();
-                              flash.value = !flash.value;
-                            }
-                          },
-                          child: Text(
-                            'flash ${flash.value ? 'on' : 'off'}',
-                            style: TextStyle(
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        margin: EdgeInsets.all(8.0),
-                        child: RaisedButton(
-                          onPressed: () {
-                            if (controller != null) {
-                              controller.flipCamera();
-                              backCamera.value = !backCamera.value;
-                            }
-                          },
-                          child: Text(
-                              'using ${backCamera.value ? 'back' : 'front'} camera',
-                              style: TextStyle(fontSize: 20)),
-                        ),
-                      )
-                    ],
+                  controlButton(
+                    icon: Icons.play_arrow,
+                    onPressed: () => controller.resumeCamera(),
                   ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Container(
-                        margin: EdgeInsets.all(8.0),
-                        child: RaisedButton(
-                          onPressed: () {
-                            controller?.pauseCamera();
-                          },
-                          child: Text('pause', style: TextStyle(fontSize: 20)),
-                        ),
-                      ),
-                      Container(
-                        margin: EdgeInsets.all(8.0),
-                        child: RaisedButton(
-                          onPressed: () {
-                            controller?.resumeCamera();
-                          },
-                          child: Text('resume', style: TextStyle(fontSize: 20)),
-                        ),
-                      )
-                    ],
+                  controlButton(
+                    icon: Icons.pause,
+                    onPressed: () => controller.pauseCamera(),
                   ),
-                  RaisedButton(
-                    onPressed: () {
-                      controller?.stopCamera();
-                    },
-                    child: Text('stop', style: TextStyle(fontSize: 20)),
+                  controlButton(
+                    icon: Icons.stop,
+                    onPressed: () => controller.stopCamera(),
                   ),
                 ],
               ),
             ),
-            flex: 1,
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 64),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  RaisedButton(
+                    child: Icon(
+                      flash.value ? Icons.flash_on : Icons.flash_off,
+                      color: flash.value ? Colors.yellow : Colors.white,
+                    ),
+                    color: Colors.black,
+                    shape: CircleBorder(),
+                    padding: const EdgeInsets.all(16),
+                    elevation: 8,
+                    onPressed: () {
+                      controller.toggleFlash();
+                      flash.value = !flash.value;
+                    },
+                  ),
+                  controlButton(
+                    icon: Icons.autorenew,
+                    onPressed: () => controller.flipCamera(),
+                  ),
+                ],
+              ),
+            ),
           )
         ],
       ),
     );
   }
+
+  RaisedButton controlButton({IconData icon, Function onPressed}) =>
+      RaisedButton(
+        child: Icon(
+          icon,
+          color: Colors.white,
+        ),
+        color: Colors.black,
+        shape: CircleBorder(),
+        padding: const EdgeInsets.all(16),
+        elevation: 8,
+        onPressed: onPressed,
+      );
 
   Widget qrViewWidget(ValueNotifier<String> qrText, StreamController stream) =>
       QRView(
@@ -132,7 +125,7 @@ class QRViewExample extends HookWidget {
         },
         permissionStreamSink: stream.sink,
         overlay: QrScannerOverlayShape(
-          borderColor: Colors.cyan,
+          borderColor: Colors.cyanAccent,
           borderRadius: 10,
           borderLength: 75,
           borderWidth: 5,
