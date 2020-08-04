@@ -8,7 +8,7 @@
 import Foundation
 import MTBBarcodeScanner
 
-public class QRView:NSObject,FlutterPlatformView {
+public class QRView: NSObject, FlutterPlatformView {
     @IBOutlet var previewView: UIView!
     var scanner: MTBBarcodeScanner?
     var registrar: FlutterPluginRegistrar
@@ -54,6 +54,8 @@ public class QRView:NSObject,FlutterPlatformView {
                     self?.pauseCamera()
                 case "resumeCamera":
                     self?.resumeCamera()
+                case "stopCamera":
+                    self?.stopCamera()
                 default:
                     result(FlutterMethodNotImplemented)
                     return
@@ -97,6 +99,12 @@ public class QRView:NSObject,FlutterPlatformView {
             if !sc.isScanning() {
                 sc.unfreezeCapture()
             }
+        }
+    }
+
+    func stopCamera() {
+        if let sc: MTBBarcodeScanner = scanner {
+            sc.stopScanning()
         }
     }
 }

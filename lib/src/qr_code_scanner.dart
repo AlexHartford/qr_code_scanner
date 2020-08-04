@@ -157,7 +157,12 @@ class QRViewController {
     _channel.invokeMethod('openPermissionSettings');
   }
 
+  void stopCamera() {
+    _channel.invokeMethod('stopCamera');
+  }
+
   void dispose() {
+    stopCamera();
     _scanUpdateController.close();
   }
 }
