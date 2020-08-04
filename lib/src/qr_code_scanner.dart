@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 typedef QRViewCreatedCallback = void Function(QRViewController controller);
 
 const libraryId = 'net.touchcapture.qr.flutterqr';
+const cameraPermission = 'cameraPermission';
+const permissionGranted = 'granted';
 
 class QRView extends StatefulWidget {
   const QRView({
@@ -20,8 +22,8 @@ class QRView extends StatefulWidget {
         super(key: key);
 
   final QRViewCreatedCallback onQRViewCreated;
-  final StreamSink<bool> permissionStreamSink;
   final ShapeBorder overlay;
+  final StreamSink<bool> permissionStreamSink;
 
   @override
   State<StatefulWidget> createState() => _QRViewState();
@@ -30,8 +32,47 @@ class QRView extends StatefulWidget {
 class _QRViewState extends State<QRView> {
   MethodChannel permissionChannel;
 
-  static const cameraPermission = 'cameraPermission';
-  static const permissionGranted = 'granted';
+  Widget _getPlatformQrView() {
+    Widget _platformQrView;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        _platformQrView = AndroidView(
+          viewType: '$libraryId/qrview',
+          onPlatformViewCreated: _onPlatformViewCreated,
+        );
+        break;
+      case TargetPlatform.iOS:
+        _platformQrView = UiKitView(
+          viewType: '$libraryId/qrview',
+          onPlatformViewCreated: _onPlatformViewCreated,
+          creationParams: _CreationParams.fromWidget(0, 0).toMap(),
+          creationParamsCodec: StandardMessageCodec(),
+        );
+        break;
+      default:
+        throw UnsupportedError(
+            'No default webview implementation for $defaultTargetPlatform.');
+    }
+    return _platformQrView;
+  }
+
+  void _onPlatformViewCreated(int id) {
+    if (widget.onQRViewCreated == null) {
+      return;
+    }
+    widget.onQRViewCreated(QRViewController._(id, widget.key));
+    permissionChannel = MethodChannel('$libraryId/permission')
+      ..setMethodCallHandler(
+        (call) async {
+          if (call.method == cameraPermission) {
+            if (call.arguments != null) {
+              final isPermissionGranted = call.arguments == permissionGranted;
+              widget.permissionStreamSink.add(isPermissionGranted);
+            }
+          }
+        },
+      );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,48 +88,13 @@ class _QRViewState extends State<QRView> {
       ],
     );
   }
-
-  Widget _getPlatformQrView() {
-    Widget _platformQrView;
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        _platformQrView = AndroidView(
-            viewType: '$libraryId/qrview',
-            onPlatformViewCreated: _onPlatformViewCreated);
-        break;
-      case TargetPlatform.iOS:
-        _platformQrView = UiKitView(
-            viewType: '$libraryId/qrview',
-            onPlatformViewCreated: _onPlatformViewCreated,
-            creationParams: _CreationParams.fromWidget(0, 0).toMap(),
-            creationParamsCodec: StandardMessageCodec());
-        break;
-      default:
-        throw UnsupportedError(
-            'Trying to use the default webview implementation for $defaultTargetPlatform but there isn\'t a default one');
-    }
-    return _platformQrView;
-  }
-
-  void _onPlatformViewCreated(int id) {
-    if (widget.onQRViewCreated == null) {
-      return;
-    }
-    widget.onQRViewCreated(QRViewController._(id, widget.key));
-    permissionChannel = MethodChannel('$libraryId/permission')
-      ..setMethodCallHandler((call) async {
-        if (call.method == cameraPermission) {
-          if (call.arguments != null) {
-            final isPermissionGranted = call.arguments == permissionGranted;
-            widget.permissionStreamSink.add(isPermissionGranted);
-          }
-        }
-      });
-  }
 }
 
 class _CreationParams {
   _CreationParams({this.width, this.height});
+
+  final double height;
+  final double width;
 
   static _CreationParams fromWidget(double width, double height) {
     return _CreationParams(
@@ -96,9 +102,6 @@ class _CreationParams {
       height: height,
     );
   }
-
-  final double width;
-  final double height;
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{'width': width, 'height': height};
@@ -131,7 +134,6 @@ class QRViewController {
   static const scanMethodCall = 'onRecognizeQR';
 
   final MethodChannel _channel;
-
   final StreamController<String> _scanUpdateController =
       StreamController<String>();
 

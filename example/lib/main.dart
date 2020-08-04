@@ -1,50 +1,41 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 void main() => runApp(MaterialApp(home: QRViewExample()));
 
-const flash_on = "FLASH ON";
-const flash_off = "FLASH OFF";
-const front_camera = "FRONT CAMERA";
-const back_camera = "BACK CAMERA";
-
-class QRViewExample extends StatefulWidget {
-  const QRViewExample({
-    Key key,
-  }) : super(key: key);
-
-  @override
-  State<StatefulWidget> createState() => _QRViewExampleState();
-}
-
-class _QRViewExampleState extends State<QRViewExample> {
-  var qrText = "";
-  var flashState = flash_on;
-  var cameraState = front_camera;
-  var isPermissionGranted = true;
-  QRViewController controller;
+class QRViewExample extends HookWidget {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  StreamController<bool> permissionController = StreamController<bool>();
 
-  @override
-  void initState() {
-    super.initState();
-    permissionController.stream.listen((isPermissionGrantedEvent) {
-      setState(() {
-        isPermissionGranted = isPermissionGrantedEvent;
-      });
-    });
-  }
+  QRViewController controller;
 
   @override
   Widget build(BuildContext context) {
+    final permissionController = useStreamController<bool>();
+    final qrText = useState('');
+    final flash = useState(false);
+    final backCamera = useState(true);
+    final isPermissionGranted = useState(true);
+
+    useEffect(() {
+      permissionController.stream
+          .listen((bool event) => isPermissionGranted.value = event);
+      return permissionController.close;
+    }, [permissionController]);
+
+    useEffect(() {
+      return controller?.dispose;
+    }, const []);
+
     return Scaffold(
       body: Column(
         children: <Widget>[
           Expanded(
-            child: isPermissionGranted ? qrViewWidget : permissionDialogWidget,
+            child: isPermissionGranted.value
+                ? qrViewWidget(qrText, permissionController)
+                : permissionDialogWidget(),
             flex: 4,
           ),
           Expanded(
@@ -53,7 +44,7 @@ class _QRViewExampleState extends State<QRViewExample> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
-                  Text("This is the result of scan: $qrText"),
+                  Text("barcode value: ${qrText.value}"),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -64,19 +55,15 @@ class _QRViewExampleState extends State<QRViewExample> {
                           onPressed: () {
                             if (controller != null) {
                               controller.toggleFlash();
-                              if (_isFlashOn(flashState)) {
-                                setState(() {
-                                  flashState = flash_off;
-                                });
-                              } else {
-                                setState(() {
-                                  flashState = flash_on;
-                                });
-                              }
+                              flash.value = !flash.value;
                             }
                           },
-                          child:
-                              Text(flashState, style: TextStyle(fontSize: 20)),
+                          child: Text(
+                            'flash ${flash.value ? 'on' : 'off'}',
+                            style: TextStyle(
+                              fontSize: 20,
+                            ),
+                          ),
                         ),
                       ),
                       Container(
@@ -85,19 +72,12 @@ class _QRViewExampleState extends State<QRViewExample> {
                           onPressed: () {
                             if (controller != null) {
                               controller.flipCamera();
-                              if (_isBackCamera(cameraState)) {
-                                setState(() {
-                                  cameraState = front_camera;
-                                });
-                              } else {
-                                setState(() {
-                                  cameraState = back_camera;
-                                });
-                              }
+                              backCamera.value = !backCamera.value;
                             }
                           },
-                          child:
-                              Text(cameraState, style: TextStyle(fontSize: 20)),
+                          child: Text(
+                              'using ${backCamera.value ? 'back' : 'front'} camera',
+                              style: TextStyle(fontSize: 20)),
                         ),
                       )
                     ],
@@ -126,6 +106,12 @@ class _QRViewExampleState extends State<QRViewExample> {
                       )
                     ],
                   ),
+                  RaisedButton(
+                    onPressed: () {
+                      controller?.stopCamera();
+                    },
+                    child: Text('stop', style: TextStyle(fontSize: 20)),
+                  ),
                 ],
               ),
             ),
@@ -136,51 +122,32 @@ class _QRViewExampleState extends State<QRViewExample> {
     );
   }
 
-  _isFlashOn(String current) {
-    return flash_on == current;
-  }
-
-  _isBackCamera(String current) {
-    return back_camera == current;
-  }
-
-  void _onQRViewCreated(QRViewController controller) {
-    this.controller = controller;
-    controller.scannedDataStream.listen((scanData) {
-      setState(() {
-        qrText = scanData;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    permissionController.close();
-    super.dispose();
-  }
-
-  Widget get qrViewWidget => QRView(
+  Widget qrViewWidget(ValueNotifier<String> qrText, StreamController stream) =>
+      QRView(
         key: qrKey,
-        onQRViewCreated: _onQRViewCreated,
-        permissionStreamSink: permissionController.sink,
+        onQRViewCreated: (QRViewController controller) {
+          this.controller = controller;
+          controller.scannedDataStream
+              .listen((scanData) => qrText.value = scanData);
+        },
+        permissionStreamSink: stream.sink,
         overlay: QrScannerOverlayShape(
-          borderColor: Colors.red,
+          borderColor: Colors.cyan,
           borderRadius: 10,
-          borderLength: 30,
-          borderWidth: 10,
+          borderLength: 75,
+          borderWidth: 5,
           cutOutSize: 300,
         ),
       );
 
-  Widget get permissionDialogWidget => Center(
+  Widget permissionDialogWidget() => Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Text(
-                "Camera Permission is not granted",
+                'Enable camera permissions to scan QR codes!',
                 style: TextStyle(color: Colors.black, fontSize: 24.0),
               ),
               FlatButton(
@@ -188,7 +155,7 @@ class _QRViewExampleState extends State<QRViewExample> {
                 onPressed: () {
                   controller.openPermissionSettings();
                 },
-                child: Text("Open Settings"),
+                child: Text('Open Settings'),
               )
             ],
           ),
