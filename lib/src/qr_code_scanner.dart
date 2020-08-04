@@ -4,19 +4,23 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-typedef QRViewCreatedCallback = void Function(QRViewController);
+typedef QRViewCreatedCallback = void Function(QRViewController controller);
+
+const libraryId = 'net.touchcapture.qr.flutterqr';
 
 class QRView extends StatefulWidget {
   const QRView({
     @required Key key,
     @required this.onQRViewCreated,
+    @required this.permissionStreamSink,
     this.overlay,
   })  : assert(key != null),
         assert(onQRViewCreated != null),
+        assert(permissionStreamSink != null),
         super(key: key);
 
   final QRViewCreatedCallback onQRViewCreated;
-
+  final StreamSink<bool> permissionStreamSink;
   final ShapeBorder overlay;
 
   @override
@@ -24,6 +28,11 @@ class QRView extends StatefulWidget {
 }
 
 class _QRViewState extends State<QRView> {
+  MethodChannel permissionChannel;
+
+  static const cameraPermission = 'cameraPermission';
+  static const permissionGranted = 'granted';
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -35,8 +44,6 @@ class _QRViewState extends State<QRView> {
               shape: widget.overlay,
             ),
           )
-        else
-          Container(),
       ],
     );
   }
@@ -46,21 +53,19 @@ class _QRViewState extends State<QRView> {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         _platformQrView = AndroidView(
-          viewType: 'net.touchcapture.qr.flutterqr/qrview',
-          onPlatformViewCreated: _onPlatformViewCreated,
-        );
+            viewType: '$libraryId/qrview',
+            onPlatformViewCreated: _onPlatformViewCreated);
         break;
       case TargetPlatform.iOS:
         _platformQrView = UiKitView(
-          viewType: 'net.touchcapture.qr.flutterqr/qrview',
-          onPlatformViewCreated: _onPlatformViewCreated,
-          creationParams: _CreationParams.fromWidget(0, 0).toMap(),
-          creationParamsCodec: StandardMessageCodec(),
-        );
+            viewType: '$libraryId/qrview',
+            onPlatformViewCreated: _onPlatformViewCreated,
+            creationParams: _CreationParams.fromWidget(0, 0).toMap(),
+            creationParamsCodec: StandardMessageCodec());
         break;
       default:
         throw UnsupportedError(
-            "Trying to use the default webview implementation for $defaultTargetPlatform but there isn't a default one");
+            'Trying to use the default webview implementation for $defaultTargetPlatform but there isn\'t a default one');
     }
     return _platformQrView;
   }
@@ -70,6 +75,15 @@ class _QRViewState extends State<QRView> {
       return;
     }
     widget.onQRViewCreated(QRViewController._(id, widget.key));
+    permissionChannel = MethodChannel('$libraryId/permission')
+      ..setMethodCallHandler((call) async {
+        if (call.method == cameraPermission) {
+          if (call.arguments != null) {
+            final isPermissionGranted = call.arguments == permissionGranted;
+            widget.permissionStreamSink.add(isPermissionGranted);
+          }
+        }
+      });
   }
 }
 
@@ -87,16 +101,13 @@ class _CreationParams {
   final double height;
 
   Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'width': width,
-      'height': height,
-    };
+    return <String, dynamic>{'width': width, 'height': height};
   }
 }
 
 class QRViewController {
   QRViewController._(int id, GlobalKey qrKey)
-      : _channel = MethodChannel('net.touchcapture.qr.flutterqr/qrview_$id') {
+      : _channel = MethodChannel('$libraryId/qrview_$id') {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       final RenderBox renderBox = qrKey.currentContext.findRenderObject();
       _channel.invokeMethod('setDimensions',
@@ -106,8 +117,11 @@ class QRViewController {
       (call) async {
         switch (call.method) {
           case scanMethodCall:
-            if (call.arguments != null) {
-              _scanUpdateController.sink.add(call.arguments.toString());
+            {
+              if (call.arguments != null) {
+                _scanUpdateController.sink.add(call.arguments.toString());
+              }
+              break;
             }
         }
       },
@@ -137,6 +151,10 @@ class QRViewController {
 
   void resumeCamera() {
     _channel.invokeMethod('resumeCamera');
+  }
+
+  void openPermissionSettings() {
+    _channel.invokeMethod('openPermissionSettings');
   }
 
   void dispose() {
