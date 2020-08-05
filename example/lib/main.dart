@@ -20,8 +20,6 @@ class QRViewExample extends HookWidget {
   Widget build(BuildContext context) {
     final permissionController = useStreamController<bool>();
     final isPermissionGranted = useState(true);
-
-    final qrText = useState('');
     final flash = useState(false);
 
     useEffect(() {
@@ -34,16 +32,11 @@ class QRViewExample extends HookWidget {
       return controller?.dispose;
     }, const []);
 
-    useEffect(() {
-      qrText.addListener(() => print(qrText.value));
-      return qrText.dispose;
-    }, [qrText.value]);
-
     return Scaffold(
       body: Stack(
         children: <Widget>[
           isPermissionGranted.value
-              ? qrViewWidget(qrText, permissionController)
+              ? qrViewWidget(context, permissionController)
               : permissionDialogWidget(),
           Align(
             alignment: Alignment.topCenter,
@@ -115,13 +108,15 @@ class QRViewExample extends HookWidget {
         onPressed: onPressed,
       );
 
-  Widget qrViewWidget(ValueNotifier<String> qrText, StreamController stream) =>
-      QRView(
+  Widget qrViewWidget(BuildContext context, StreamController stream) => QRView(
         key: qrKey,
         onQRViewCreated: (QRViewController controller) {
           this.controller = controller;
-          controller.scannedDataStream
-              .listen((scanData) => qrText.value = scanData);
+          controller.scannedDataStream.listen((scanData) {
+            this.controller.pauseCamera();
+            Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => QrScreen(scanData)));
+          });
         },
         permissionStreamSink: stream.sink,
         overlay: QrScannerOverlayShape(
@@ -154,4 +149,28 @@ class QRViewExample extends HookWidget {
           ),
         ),
       );
+}
+
+class QrScreen extends StatelessWidget {
+  const QrScreen(this.qrText, {Key key}) : super(key: key);
+
+  final String qrText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Scan result'),
+      ),
+      body: Center(
+        child: Text(
+          qrText,
+          style: TextStyle(
+            fontSize: 24,
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
 }
