@@ -37,6 +37,7 @@ public class QRView: NSObject, FlutterPlatformView {
                 NSLog("Unable to start scanning")
             }
         } else {
+            self.permissionChannel.invokeMethod("cameraPermission", arguments: false)
             openSettingsDialog()
         }
     }
@@ -47,7 +48,7 @@ public class QRView: NSObject, FlutterPlatformView {
             switch(call.method){
                 case "setDimensions":
                     let arguments = call.arguments as! Dictionary<String, Double>
-                    self?.setDimensions(width: arguments["width"] ?? 0,height: arguments["height"] ?? 0)
+                    self?.setDimensions(width: arguments["width"] ?? 0, height: arguments["height"] ?? 0)
                 case "flipCamera":
                     self?.flipCamera()
                 case "toggleFlash":
@@ -59,7 +60,7 @@ public class QRView: NSObject, FlutterPlatformView {
                 case "stopCamera":
                     self?.stopCamera()
                 case "openPermissionSettings":
-                    self?.openSettings()
+                    self?.openSettingsDialog()
                 default:
                     result(FlutterMethodNotImplemented)
                     return
@@ -127,7 +128,7 @@ public class QRView: NSObject, FlutterPlatformView {
             if UIApplication.shared.canOpenURL(settingsUrl) {
                 if #available(iOS 10.0, *) {
                     UIApplication.shared.open(settingsUrl, completionHandler: { (success) in
-                        permissionChannel.invokeMethod("cameraPermission", success)
+                        // Successfully opened settings
                     })
                 } else {
                     // Fallback on earlier versions
@@ -137,6 +138,11 @@ public class QRView: NSObject, FlutterPlatformView {
         })
         alert.addAction(settingsAction)
 
-        UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: nil)
+        UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: { () in
+            // Unfortunately, this doesn't do much because IOS kills your app if the user changes settings.
+            // Leaving this in with the hope that one day Apple changes their mind.
+            let status = AVCaptureDevice.authorizationStatus(for: AVMediaType.video)
+            self.permissionChannel.invokeMethod("cameraPermission", arguments: status == .authorized)
+        })
     }
 }
