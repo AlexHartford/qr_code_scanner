@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 typedef QRViewCreatedCallback = void Function(QRViewController controller);
 
 const libraryId = 'net.touchcapture.qr.flutterqr';
+const scanMethodCall = 'onRecognizeQR';
 const cameraPermission = 'cameraPermission';
 
 class QRView extends StatefulWidget {
@@ -49,8 +50,7 @@ class _QRViewState extends State<QRView> {
         );
         break;
       default:
-        throw UnsupportedError(
-            'No default webview implementation for $defaultTargetPlatform.');
+        throw UnsupportedError('No default webview implementation for $defaultTargetPlatform.');
     }
     return _platformQrView;
   }
@@ -108,12 +108,11 @@ class _CreationParams {
 }
 
 class QRViewController {
-  QRViewController._(int id, GlobalKey qrKey)
-      : _channel = MethodChannel('$libraryId/qrview_$id') {
+  QRViewController._(int id, GlobalKey qrKey) : _channel = MethodChannel('$libraryId/qrview_$id') {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       final RenderBox renderBox = qrKey.currentContext.findRenderObject();
-      _channel.invokeMethod('setDimensions',
-          {'width': renderBox.size.width, 'height': renderBox.size.height});
+      _channel.invokeMethod(
+          'setDimensions', {'width': renderBox.size.width, 'height': renderBox.size.height});
     }
     _channel.setMethodCallHandler(
       (call) async {
@@ -130,11 +129,8 @@ class QRViewController {
     );
   }
 
-  static const scanMethodCall = 'onRecognizeQR';
-
   final MethodChannel _channel;
-  final StreamController<String> _scanUpdateController =
-      StreamController<String>();
+  final StreamController<String> _scanUpdateController = StreamController<String>();
 
   Stream<String> get scannedDataStream => _scanUpdateController.stream;
 
