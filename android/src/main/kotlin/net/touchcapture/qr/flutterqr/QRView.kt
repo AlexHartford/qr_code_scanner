@@ -31,7 +31,6 @@ class QRView(private val registrar: PluginRegistry.Registrar, id: Int) :
         const val CAMERA_REQUEST_ID = 513469796
         const val LIBRARY_ID ="net.touchcapture.qr.flutterqr"
         private const val cameraPermission = "cameraPermission"
-        private const val openPermissionSettings = "openPermissionSettings"
         private const val permissionGranted = "granted"
         private const val permissionDenied = "denied"
     }
@@ -204,7 +203,9 @@ class QRView(private val registrar: PluginRegistry.Registrar, id: Int) :
             "stopCamera" -> {
                 dispose()
             }
-            openPermissionSettings -> openSettings()
+            "openPermissionSettings" -> {
+                openSettings()
+            }
         }
     }
 

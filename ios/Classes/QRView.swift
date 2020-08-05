@@ -35,7 +35,8 @@ public class QRView: NSObject, FlutterPlatformView {
                 NSLog("Unable to start scanning")
             }
         } else {
-            UIAlertView(title: "Scanning Unavailable", message: "This app does not have permission to access the camera", delegate: nil, cancelButtonTitle: nil, otherButtonTitles: "Ok").show()
+            // UIAlertView(title: "Scanning Unavailable", message: "This app does not have permission to access the camera", delegate: nil, cancelButtonTitle: nil, otherButtonTitles: "Ok").show()
+            openSettings()
         }
     }
     
@@ -56,6 +57,8 @@ public class QRView: NSObject, FlutterPlatformView {
                     self?.resumeCamera()
                 case "stopCamera":
                     self?.stopCamera()
+                case "openPermissionSettings":
+                    self?.openSettings()
                 default:
                     result(FlutterMethodNotImplemented)
                     return
@@ -107,5 +110,21 @@ public class QRView: NSObject, FlutterPlatformView {
         if let sc: MTBBarcodeScanner = scanner {
             sc.stopScanning()
         }
+    }
+
+    func openSettings() {
+        let alertController = UIAlertController(title: "Error",
+                                  message: "Camera access is denied",
+                                  preferredStyle: .alert)
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .default))
+        alertController.addAction(UIAlertAction(title: "Settings", style: .cancel) { _ in
+            if let url = URL(string: UIApplicationOpenSettingsURLString) {
+                UIApplication.shared.open(url, options: [:], completionHandler: { _ in
+                    // Handle
+                })
+            }
+        })
+
+        present(alertController, animated: true)
     }
 }
