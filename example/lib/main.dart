@@ -23,8 +23,7 @@ class QRViewExample extends HookWidget {
     final flash = useState(false);
 
     useEffect(() {
-      permissionController.stream
-          .listen((bool event) => isPermissionGranted.value = event);
+      permissionController.stream.listen((bool event) => isPermissionGranted.value = event);
       return permissionController.close;
     }, [permissionController]);
 
@@ -95,8 +94,7 @@ class QRViewExample extends HookWidget {
     );
   }
 
-  RaisedButton controlButton({IconData icon, Function onPressed}) =>
-      RaisedButton(
+  RaisedButton controlButton({IconData icon, Function onPressed}) => RaisedButton(
         child: Icon(
           icon,
           color: Colors.white,
@@ -114,8 +112,7 @@ class QRViewExample extends HookWidget {
           this.controller = controller;
           controller.scannedDataStream.listen((scanData) {
             this.controller.pauseCamera();
-            Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => QrScreen(scanData)));
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => QrScreen(scanData)));
           });
         },
         permissionStreamSink: stream.sink,

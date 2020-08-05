@@ -13,11 +13,13 @@ public class QRView: NSObject, FlutterPlatformView {
     var scanner: MTBBarcodeScanner?
     var registrar: FlutterPluginRegistrar
     var channel: FlutterMethodChannel
+    var permissionChannel: FlutterMethodChannel
     
     public init(withFrame frame: CGRect, withRegistrar registrar: FlutterPluginRegistrar, withId id: Int64){
         self.registrar = registrar
         previewView = UIView(frame: frame)
         channel = FlutterMethodChannel(name: "net.touchcapture.qr.flutterqr/qrview_\(id)", binaryMessenger: registrar.messenger())
+        permissionChannel = FlutterMethodChannel(name: "net.touchcapture.qr.flutterqr/permission", binaryMessenger: registrar.messenger())
     }
     
     func isCameraAvailable(success: Bool) -> Void {
@@ -35,7 +37,8 @@ public class QRView: NSObject, FlutterPlatformView {
                 NSLog("Unable to start scanning")
             }
         } else {
-            UIAlertView(title: "Scanning Unavailable", message: "This app does not have permission to access the camera", delegate: nil, cancelButtonTitle: nil, otherButtonTitles: "Ok").show()
+            self.permissionChannel.invokeMethod("cameraPermission", arguments: false)
+            openSettingsDialog()
         }
     }
     
@@ -44,8 +47,8 @@ public class QRView: NSObject, FlutterPlatformView {
             [weak self] (call: FlutterMethodCall, result: FlutterResult) -> Void in
             switch(call.method){
                 case "setDimensions":
-                    var arguments = call.arguments as! Dictionary<String, Double>
-                    self?.setDimensions(width: arguments["width"] ?? 0,height: arguments["height"] ?? 0)
+                    let arguments = call.arguments as! Dictionary<String, Double>
+                    self?.setDimensions(width: arguments["width"] ?? 0, height: arguments["height"] ?? 0)
                 case "flipCamera":
                     self?.flipCamera()
                 case "toggleFlash":
@@ -56,6 +59,8 @@ public class QRView: NSObject, FlutterPlatformView {
                     self?.resumeCamera()
                 case "stopCamera":
                     self?.stopCamera()
+                case "openPermissionSettings":
+                    self?.openSettingsDialog()
                 default:
                     result(FlutterMethodNotImplemented)
                     return
@@ -107,5 +112,37 @@ public class QRView: NSObject, FlutterPlatformView {
         if let sc: MTBBarcodeScanner = scanner {
             sc.stopScanning()
         }
+    }
+
+    func openSettingsDialog() {
+        let alert = UIAlertController(title: "Unable to access camera",
+                                      message: "To enable access, go to Settings > Privacy > Camera and turn on camera access for this app.",
+                                      preferredStyle: UIAlertController.Style.alert)
+
+        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+        alert.addAction(okAction)
+
+        let settingsAction = UIAlertAction(title: "Settings", style: .default, handler: { _ in
+            // Take the user to Settings app to possibly change permission.
+            guard let settingsUrl = URL(string: UIApplicationOpenSettingsURLString) else { return }
+            if UIApplication.shared.canOpenURL(settingsUrl) {
+                if #available(iOS 10.0, *) {
+                    UIApplication.shared.open(settingsUrl, completionHandler: { (success) in
+                        // Successfully opened settings
+                    })
+                } else {
+                    // Fallback on earlier versions
+                    UIApplication.shared.openURL(settingsUrl)
+                }
+            }
+        })
+        alert.addAction(settingsAction)
+
+        UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: { () in
+            // Unfortunately, this doesn't do much because IOS kills your app if the user changes settings.
+            // Leaving this in with the hope that one day Apple changes their mind.
+            let status = AVCaptureDevice.authorizationStatus(for: AVMediaType.video)
+            self.permissionChannel.invokeMethod("cameraPermission", arguments: status == .authorized)
+        })
     }
 }
