@@ -23,7 +23,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Can we access your camera in order to scan barcodes?</string>
+	<string>Enable camera to scan barcodes. The camera will only be active while scanning.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
