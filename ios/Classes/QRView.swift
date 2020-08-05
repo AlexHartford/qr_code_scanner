@@ -45,7 +45,7 @@ public class QRView: NSObject, FlutterPlatformView {
             [weak self] (call: FlutterMethodCall, result: FlutterResult) -> Void in
             switch(call.method){
                 case "setDimensions":
-                    var arguments = call.arguments as! Dictionary<String, Double>
+                    let arguments = call.arguments as! Dictionary<String, Double>
                     self?.setDimensions(width: arguments["width"] ?? 0,height: arguments["height"] ?? 0)
                 case "flipCamera":
                     self?.flipCamera()
@@ -113,18 +113,29 @@ public class QRView: NSObject, FlutterPlatformView {
     }
 
     func openSettings() {
-        let alertController = UIAlertController(title: "Error",
-                                  message: "Camera access is denied",
-                                  preferredStyle: .alert)
-        alertController.addAction(UIAlertAction(title: "Cancel", style: .default))
-        alertController.addAction(UIAlertAction(title: "Settings", style: .cancel) { _ in
-            if let url = URL(string: UIApplicationOpenSettingsURLString) {
-                UIApplication.shared.open(url, options: [:], completionHandler: { _ in
-                    // Handle
-                })
+        let alert = UIAlertController(title: "Unable to access camera",
+                                      message: "To enable access, go to Settings > Privacy > Camera and turn on camera access for this app.",
+                                      preferredStyle: UIAlertController.Style.alert)
+
+        let okAction = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+        alert.addAction(okAction)
+
+        let settingsAction = UIAlertAction(title: "Settings", style: .default, handler: { _ in
+            // Take the user to Settings app to possibly change permission.
+            guard let settingsUrl = URL(string: UIApplicationOpenSettingsURLString) else { return }
+            if UIApplication.shared.canOpenURL(settingsUrl) {
+                if #available(iOS 10.0, *) {
+                    UIApplication.shared.open(settingsUrl, completionHandler: { (success) in
+                        // Finished opening URL
+                    })
+                } else {
+                    // Fallback on earlier versions
+                    UIApplication.shared.openURL(settingsUrl)
+                }
             }
         })
+        alert.addAction(settingsAction)
 
-        present(alertController, animated: true)
+        UIApplication.shared.keyWindow?.rootViewController?.present(alert, animated: true, completion: nil)
     }
 }
