@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:app_settings/app_settings.dart';
 
 void main() => runApp(MaterialApp(home: QRViewExample()));
 
@@ -138,7 +139,8 @@ class QRViewExample extends HookWidget {
               FlatButton(
                 color: Colors.blue,
                 onPressed: () {
-                  controller.openPermissionSettings();
+                  // controller.openPermissionSettings();
+                  AppSettings.openAppSettings();
                 },
                 child: Text('Open Settings'),
               )
