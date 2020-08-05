@@ -38,7 +38,8 @@ public class QRView: NSObject, FlutterPlatformView {
             }
         } else {
             self.permissionChannel.invokeMethod("cameraPermission", arguments: false)
-            openSettingsDialog()
+            // Responsibility delegated to app_settings on the Flutter side.
+            // openSettingsDialog()
         }
     }
     
