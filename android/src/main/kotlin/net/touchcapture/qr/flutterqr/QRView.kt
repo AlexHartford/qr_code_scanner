@@ -31,8 +31,6 @@ class QRView(private val registrar: PluginRegistry.Registrar, id: Int) :
         const val CAMERA_REQUEST_ID = 513469796
         const val LIBRARY_ID ="net.touchcapture.qr.flutterqr"
         private const val cameraPermission = "cameraPermission"
-        private const val permissionGranted = "granted"
-        private const val permissionDenied = "denied"
     }
 
     var barcodeView: BarcodeView? = null
@@ -85,7 +83,7 @@ class QRView(private val registrar: PluginRegistry.Registrar, id: Int) :
     private fun postPermissionEnabled() {
         if (!isPermissionEnabled) {
             isPermissionEnabled = true
-            permissionChannel.invokeMethod(cameraPermission, permissionGranted)
+            permissionChannel.invokeMethod(cameraPermission, true)
         }
     }
 
@@ -169,7 +167,7 @@ class QRView(private val registrar: PluginRegistry.Registrar, id: Int) :
                     cameraPermissionContinuation?.run()
                 } else {
                     isPermissionEnabled = false
-                    permissionChannel.invokeMethod(cameraPermission, permissionDenied)
+                    permissionChannel.invokeMethod(cameraPermission, false)
                 }
                 return true
             }
@@ -217,14 +215,14 @@ class QRView(private val registrar: PluginRegistry.Registrar, id: Int) :
 
     private fun checkAndRequestPermission(result: MethodChannel.Result?) {
         if (cameraPermissionContinuation != null) {
-            result?.error("cameraPermission", "Camera permission request ongoing", null);
+            result?.error(cameraPermission, "Camera permission request ongoing", null);
         }
 
         cameraPermissionContinuation = Runnable {
             cameraPermissionContinuation = null
             if (!hasCameraPermission()) {
                 result?.error(
-                        "cameraPermission", "MediaRecorderCamera permission not granted", null)
+                        cameraPermission, "MediaRecorderCamera permission not granted", null)
                 return@Runnable
             }
         }

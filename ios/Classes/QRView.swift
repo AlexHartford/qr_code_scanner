@@ -13,11 +13,13 @@ public class QRView: NSObject, FlutterPlatformView {
     var scanner: MTBBarcodeScanner?
     var registrar: FlutterPluginRegistrar
     var channel: FlutterMethodChannel
+    var permissionChannel: FlutterMethodChannel
     
     public init(withFrame frame: CGRect, withRegistrar registrar: FlutterPluginRegistrar, withId id: Int64){
         self.registrar = registrar
         previewView = UIView(frame: frame)
         channel = FlutterMethodChannel(name: "net.touchcapture.qr.flutterqr/qrview_\(id)", binaryMessenger: registrar.messenger())
+        permissionChannel = FlutterMethodChannel(name: "net.touchcapture.qr.flutterqr/permission", binaryMessenger: registrar.messenger())
     }
     
     func isCameraAvailable(success: Bool) -> Void {
@@ -35,8 +37,7 @@ public class QRView: NSObject, FlutterPlatformView {
                 NSLog("Unable to start scanning")
             }
         } else {
-            // UIAlertView(title: "Scanning Unavailable", message: "This app does not have permission to access the camera", delegate: nil, cancelButtonTitle: nil, otherButtonTitles: "Ok").show()
-            openSettings()
+            openSettingsDialog()
         }
     }
     
@@ -112,7 +113,7 @@ public class QRView: NSObject, FlutterPlatformView {
         }
     }
 
-    func openSettings() {
+    func openSettingsDialog() {
         let alert = UIAlertController(title: "Unable to access camera",
                                       message: "To enable access, go to Settings > Privacy > Camera and turn on camera access for this app.",
                                       preferredStyle: UIAlertController.Style.alert)
@@ -126,7 +127,7 @@ public class QRView: NSObject, FlutterPlatformView {
             if UIApplication.shared.canOpenURL(settingsUrl) {
                 if #available(iOS 10.0, *) {
                     UIApplication.shared.open(settingsUrl, completionHandler: { (success) in
-                        // Finished opening URL
+                        permissionChannel.invokeMethod("cameraPermission", success)
                     })
                 } else {
                     // Fallback on earlier versions

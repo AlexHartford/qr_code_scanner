@@ -8,7 +8,6 @@ typedef QRViewCreatedCallback = void Function(QRViewController controller);
 
 const libraryId = 'net.touchcapture.qr.flutterqr';
 const cameraPermission = 'cameraPermission';
-const permissionGranted = 'granted';
 
 class QRView extends StatefulWidget {
   const QRView({
@@ -66,7 +65,7 @@ class _QRViewState extends State<QRView> {
         (call) async {
           if (call.method == cameraPermission) {
             if (call.arguments != null) {
-              final isPermissionGranted = call.arguments == permissionGranted;
+              final isPermissionGranted = call.arguments;
               widget.permissionStreamSink.add(isPermissionGranted);
             }
           }
